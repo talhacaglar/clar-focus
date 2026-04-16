@@ -1,12 +1,12 @@
 {
-  "custom/omarchy-focus": {
-    "exec": "~/.local/bin/omarchy-focus-waybar status",
+  "custom/clar-focus": {
+    "exec": "~/.local/bin/clar-focus-waybar status",
     "return-type": "json",
     "interval": 1,
     "signal": 12,
-    "on-click": "~/.local/bin/omarchy-focus-waybar open",
-    "on-click-right": "~/.local/bin/omarchy-focus-waybar toggle-pomodoro",
-    "on-click-middle": "~/.local/bin/omarchy-focus-waybar toggle-focus",
+    "on-click": "~/.local/bin/clar-focus-waybar open",
+    "on-click-right": "~/.local/bin/clar-focus-waybar toggle-pomodoro",
+    "on-click-middle": "~/.local/bin/clar-focus-waybar toggle-focus",
     "tooltip": true
   }
 }

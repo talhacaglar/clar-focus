@@ -1,4 +1,4 @@
-"""Omarchy Focus."""
+"""Clar Focus."""
 
 __all__ = ["__version__"]
 
