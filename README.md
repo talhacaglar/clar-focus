@@ -1,4 +1,4 @@
-# Omarchy Focus
+# Clar Focus
 
 Premium terminal-first productivity suite for **Arch Linux + Wayland + Hyprland + Waybar**.
 
@@ -28,13 +28,13 @@ The project is designed to feel like a polished productivity tool, not a shell-s
 ## Project Structure
 
 ```text
-omarchy-focus/
+clar-focus/
 ├── examples/
 │   ├── systemd/
-│   │   └── omarchy-focus-recover.service
+│   │   └── clar-focus-recover.service
 │   └── waybar/
 │       ├── module.jsonc
-│       ├── omarchy-focus-waybar.sh
+│       ├── clar-focus-waybar.sh
 │       └── style.css
 ├── src/
 │   └── omarchy_focus/
@@ -114,13 +114,13 @@ omarchy-focus/
 ### Quick install
 
 ```bash
-cd ~/Scripts/omarchy-focus
+cd /path/to/clar-focus
 ./install.sh
 ```
 
 The installer:
 
-- creates a local venv under `~/.local/share/omarchy-focus/venv`
+- creates a local venv under `~/.local/share/clar-focus/venv`
 - installs the package into that venv
 - symlinks commands into `~/.local/bin`
 - installs the Waybar wrapper script
@@ -129,7 +129,7 @@ The installer:
 ### Manual install
 
 ```bash
-cd ~/Scripts/omarchy-focus
+cd /path/to/clar-focus
 python -m venv .venv
 . .venv/bin/activate
 pip install -e .
@@ -154,54 +154,54 @@ Optional integration:
 ### Launch TUI
 
 ```bash
-omarchy-focus
-omarchy-focus tui
+clar-focus
+clar-focus tui
 ```
 
 ### Tasks
 
 ```bash
-omarchy-focus add-task "Write quarterly report" --priority high --tags "work report" --estimate 90 --due "2026-04-19 15:00"
-omarchy-focus tasks list
-omarchy-focus tasks edit 3 --status in_progress
-omarchy-focus tasks done 3
-omarchy-focus tasks delete 3
+clar-focus add-task "Write quarterly report" --priority high --tags "work report" --estimate 90 --due "2026-04-19 15:00"
+clar-focus tasks list
+clar-focus tasks edit 3 --status in_progress
+clar-focus tasks done 3
+clar-focus tasks delete 3
 ```
 
 ### Pomodoro
 
 ```bash
-omarchy-focus start --task-id 7
-omarchy-focus start --minutes 50 --focus
-omarchy-focus pause
-omarchy-focus resume
-omarchy-focus stop
-omarchy-focus toggle
+clar-focus start --task-id 7
+clar-focus start --minutes 50 --focus
+clar-focus pause
+clar-focus resume
+clar-focus stop
+clar-focus toggle
 ```
 
 ### Focus Mode
 
 ```bash
-omarchy-focus focus on --minutes 50
-omarchy-focus focus on --minutes 50 --strict
-omarchy-focus focus off
-omarchy-focus focus off --force
-omarchy-focus focus status --json
-omarchy-focus focus add-site reddit.com
-omarchy-focus focus remove-site instagram.com
-omarchy-focus focus recover
+clar-focus focus on --minutes 50
+clar-focus focus on --minutes 50 --strict
+clar-focus focus off
+clar-focus focus off --force
+clar-focus focus status --json
+clar-focus focus add-site reddit.com
+clar-focus focus remove-site instagram.com
+clar-focus focus recover
 ```
 
 ### Status / Waybar
 
 ```bash
-omarchy-focus status
-omarchy-focus status --json
-omarchy-focus waybar
-omarchy-focus waybar --plain
-omarchy-focus stats
-omarchy-focus settings show
-omarchy-focus settings set pomodoro_work_minutes 50
+clar-focus status
+clar-focus status --json
+clar-focus waybar
+clar-focus waybar --plain
+clar-focus stats
+clar-focus settings show
+clar-focus settings set pomodoro_work_minutes 50
 ```
 
 ## TUI Layout
@@ -249,14 +249,14 @@ Module snippet:
 
 ```jsonc
 {
-  "custom/omarchy-focus": {
-    "exec": "~/.local/bin/omarchy-focus-waybar status",
+  "custom/clar-focus": {
+    "exec": "~/.local/bin/clar-focus-waybar status",
     "return-type": "json",
     "interval": 1,
     "signal": 12,
-    "on-click": "~/.local/bin/omarchy-focus-waybar open",
-    "on-click-right": "~/.local/bin/omarchy-focus-waybar toggle-pomodoro",
-    "on-click-middle": "~/.local/bin/omarchy-focus-waybar toggle-focus",
+    "on-click": "~/.local/bin/clar-focus-waybar open",
+    "on-click-right": "~/.local/bin/clar-focus-waybar toggle-pomodoro",
+    "on-click-middle": "~/.local/bin/clar-focus-waybar toggle-focus",
     "tooltip": true
   }
 }
@@ -265,7 +265,7 @@ Module snippet:
 Starter style:
 
 ```css
-#custom-omarchy-focus {
+#custom-clar-focus {
   min-width: 164px;
   padding: 1px 12px;
   margin: 2px 3px;
@@ -277,7 +277,7 @@ Reference files:
 
 - `examples/waybar/module.jsonc`
 - `examples/waybar/style.css`
-- `examples/waybar/omarchy-focus-waybar.sh`
+- `examples/waybar/clar-focus-waybar.sh`
 
 ## Focus Mode Technical Notes
 
@@ -335,9 +335,9 @@ The main app does not edit `/etc/hosts` directly.
 It shells out to:
 
 ```bash
-omarchy-focus-hosts-helper apply ...
-omarchy-focus-hosts-helper clear
-omarchy-focus-hosts-helper status
+clar-focus-hosts-helper apply ...
+clar-focus-hosts-helper clear
+clar-focus-hosts-helper status
 ```
 
 When needed, the app invokes that helper with `sudo`.

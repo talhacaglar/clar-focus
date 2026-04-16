@@ -24,7 +24,7 @@ from .waybar import render_waybar
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="omarchy-focus", description=f"{APP_NAME} tasklist + pomodoro + focus manager")
+    parser = argparse.ArgumentParser(prog="clar-focus", description=f"{APP_NAME} tasklist + pomodoro + focus manager")
     subparsers = parser.add_subparsers(dest="command")
 
     subparsers.add_parser("tui")

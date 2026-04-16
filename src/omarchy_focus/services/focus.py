@@ -177,7 +177,7 @@ class FocusService:
         return snapshot
 
     def _helper_script(self) -> list[str]:
-        helper = shutil.which("omarchy-focus-hosts-helper")
+        helper = shutil.which("clar-focus-hosts-helper") or shutil.which("omarchy-focus-hosts-helper")
         if helper:
             return [helper]
         helper_path = Path(__file__).resolve().parents[1] / "focus_hosts_helper.py"

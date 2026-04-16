@@ -3,7 +3,7 @@ requires = ["hatchling>=1.25"]
 build-backend = "hatchling.build"
 
 [project]
-name = "omarchy-focus"
+name = "clar-focus"
 version = "0.1.0"
 description = "Premium terminal productivity suite for Arch Linux, Wayland, Hyprland, and Waybar."
 readme = "README.md"
@@ -17,6 +17,8 @@ dependencies = [
 ]
 
 [project.scripts]
+clar-focus = "omarchy_focus.cli:main"
+clar-focus-hosts-helper = "omarchy_focus.focus_hosts_helper:main"
 omarchy-focus = "omarchy_focus.cli:main"
 focus = "omarchy_focus.legacy:main"
 focus-indicator = "omarchy_focus.legacy:indicator_main"

@@ -1,4 +1,4 @@
-#custom-omarchy-focus {
+#custom-clar-focus {
   min-width: 164px;
   padding: 1px 12px;
   margin: 2px 3px;
@@ -9,18 +9,18 @@
   box-shadow: inset 0 1px 0 alpha(@foreground, 0.05);
 }
 
-#custom-omarchy-focus.pomodoro {
+#custom-clar-focus.pomodoro {
   color: #f7d98f;
 }
 
-#custom-omarchy-focus.break {
+#custom-clar-focus.break {
   color: #9ad0b0;
 }
 
-#custom-omarchy-focus.paused {
+#custom-clar-focus.paused {
   color: #f0c674;
 }
 
-#custom-omarchy-focus.focus {
+#custom-clar-focus.focus {
   color: #f29fab;
 }

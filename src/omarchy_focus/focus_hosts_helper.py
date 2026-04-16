@@ -166,7 +166,7 @@ def _require_root(action: str, hosts_path: Path) -> None:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Omarchy Focus hosts helper")
+    parser = argparse.ArgumentParser(description="Clar Focus hosts helper")
     parser.add_argument("--hosts-file", default=str(DEFAULT_HOSTS_PATH))
     subparsers = parser.add_subparsers(dest="command", required=True)
 
