@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+export PYTHONPATH="/home/clar/Scripts/omarchy-focus/src${PYTHONPATH:+:$PYTHONPATH}"
+exec /home/clar/.local/share/omarchy-focus/venv/bin/python -m omarchy_focus.focus_hosts_helper "$@"
