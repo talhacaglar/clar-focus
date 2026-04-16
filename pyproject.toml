@@ -1,0 +1,35 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "omarchy-focus"
+version = "0.1.0"
+description = "Premium terminal productivity suite for Arch Linux, Wayland, Hyprland, and Waybar."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+authors = [
+  { name = "clar" }
+]
+dependencies = [
+  "textual>=0.58.1"
+]
+
+[project.scripts]
+omarchy-focus = "omarchy_focus.cli:main"
+focus = "omarchy_focus.legacy:main"
+focus-indicator = "omarchy_focus.legacy:indicator_main"
+omarchy-focus-hosts-helper = "omarchy_focus.focus_hosts_helper:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/omarchy_focus"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "src/omarchy_focus",
+  "README.md",
+  "install.sh",
+  "examples",
+  "tests",
+]
