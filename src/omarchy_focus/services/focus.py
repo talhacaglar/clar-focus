@@ -2,16 +2,16 @@
 
 from __future__ import annotations
 
-from dataclasses import asdict
-from datetime import timedelta
 import json
 import os
-from pathlib import Path
 import re
 import shutil
 import subprocess
 import sys
 import uuid
+from dataclasses import asdict
+from datetime import timedelta
+from pathlib import Path
 
 from ..database import Database
 from ..exceptions import FocusModeError
@@ -330,16 +330,8 @@ class FocusService:
         if current.active:
             raise FocusModeError("Focus mode is already active")
 
-        strict_mode = (
-            self.settings.get("strict_mode_default")
-            if strict_mode is None
-            else strict_mode
-        )
-        auto_release = (
-            self.settings.get("focus_auto_release")
-            if auto_release is None
-            else auto_release
-        )
+        strict_mode = self.settings.get("strict_mode_default") if strict_mode is None else strict_mode
+        auto_release = self.settings.get("focus_auto_release") if auto_release is None else auto_release
         if strict_mode and not minutes:
             raise FocusModeError("Strict mode requires a timed session")
         site_list = sites or [domain for domain, _, _ in self.list_sites(enabled_only=True)]
@@ -411,7 +403,12 @@ class FocusService:
             except FocusModeError:
                 pass
             return FocusStateSnapshot(active=False)
-        if snapshot.strict_mode and not force and snapshot.ends_at and remaining_seconds(snapshot.ends_at) > 0:
+        if (
+            snapshot.strict_mode
+            and not force
+            and snapshot.ends_at
+            and remaining_seconds(snapshot.ends_at) > 0
+        ):
             raise FocusModeError("Strict mode is active; session cannot be removed yet")
         self._run_helper("clear", interactive=interactive)
         self._close_active_session(reason)

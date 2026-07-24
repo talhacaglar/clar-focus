@@ -223,6 +223,9 @@ Layout direction:
 - focus view with active session state and blocked-sites table
 - statistics view with mini sparkline/progress bars
 - settings view with editable settings table
+- **light/dark theme** — signature "midnight-gold" (dark) and "daylight-gold"
+  (light) themes, toggled with `F2`. The choice is persisted in the settings
+  table (`theme_variant`) and restored on the next launch.
 
 ## Keyboard Shortcuts
 
@@ -241,6 +244,7 @@ Layout direction:
 - `g`: dashboard
 - `i`: statistics
 - `,`: settings
+- `F2`: toggle light/dark theme
 - `?`: help
 
 ## Waybar Example
@@ -252,7 +256,7 @@ Module snippet:
   "custom/clar-focus": {
     "exec": "~/.local/bin/clar-focus-waybar status",
     "return-type": "json",
-    "interval": 1,
+    "interval": 2,
     "signal": 12,
     "on-click": "~/.local/bin/clar-focus-waybar open",
     "on-click-right": "~/.local/bin/clar-focus-waybar toggle-pomodoro",
@@ -308,10 +312,16 @@ Managed block format:
 ```text
 # >>> OMARCHY_FOCUS START
 # OMARCHY_FOCUS_META {"owner": "...", "session_id": "...", "started_at": "...", "strict": true}
-127.0.0.1 reddit.com
-127.0.0.1 www.reddit.com
+0.0.0.0 reddit.com www.reddit.com
+::1 reddit.com www.reddit.com
 # <<< OMARCHY_FOCUS END
 ```
+
+Blocked domains are pointed at `0.0.0.0` (and `::1` for IPv6) rather than
+`127.0.0.1`. Routing to `0.0.0.0` fails fast instead of hitting any local web
+server the user might be running, and it is more resistant to DNS-rebinding
+style bypasses. The original file's permissions and ownership are preserved on
+every write so services like `systemd-resolved` keep working.
 
 ### Recovery flow
 
@@ -342,11 +352,36 @@ clar-focus-hosts-helper status
 
 When needed, the app invokes that helper with `sudo`.
 
+## Reports
+
+Export a Markdown retrospective (great for a daily/weekly review):
+
+```bash
+clar-focus stats --md > ~/focus-report.md
+clar-focus stats --json   # machine-readable
+```
+
+## Development
+
+Install the dev tool-chain and run the quality gates locally:
+
+```bash
+pip install -e ".[dev]"
+ruff check .          # lint
+ruff format --check . # formatting
+mypy                  # type check (informational)
+pytest                # tests
+```
+
+CI runs these on every push and pull request (see `.github/workflows/ci.yml`).
+
 ## Testing
 
 Run the included unit tests:
 
 ```bash
+pytest
+# or, without installing dev deps:
 PYTHONPATH=src python -m unittest discover -s tests -v
 ```
 

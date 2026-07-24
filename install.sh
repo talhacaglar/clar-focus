@@ -38,7 +38,7 @@ module = '''
   "custom/clar-focus": {
     "exec": "~/.local/bin/clar-focus-waybar status",
     "return-type": "json",
-    "interval": 1,
+    "interval": 2,
     "signal": 12,
     "on-click": "~/.local/bin/clar-focus-waybar open",
     "on-click-right": "~/.local/bin/clar-focus-waybar toggle-pomodoro",

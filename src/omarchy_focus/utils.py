@@ -2,26 +2,26 @@
 
 from __future__ import annotations
 
+import contextlib
 import fcntl
-from datetime import date, datetime, timedelta, timezone
 import json
 import os
-from pathlib import Path
 import re
 import shutil
 import subprocess
 import sys
+from datetime import UTC, date, datetime, timedelta
+from pathlib import Path
 from typing import Any, TextIO
 
 from .paths import APP_NAME, APP_SLUG, WAYBAR_SIGNAL
-
 
 TUI_LOCK_PATH = Path(os.environ.get("XDG_RUNTIME_DIR", f"/tmp/{os.getuid()}")) / f"{APP_SLUG}.lock"
 TUI_WINDOW_PATH = Path(os.environ.get("XDG_RUNTIME_DIR", f"/tmp/{os.getuid()}")) / f"{APP_SLUG}.window.json"
 
 
 def utc_now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def current_boot_id() -> str | None:
@@ -41,14 +41,20 @@ def to_iso(value: datetime | None) -> str | None:
     if value is None:
         return None
     if value.tzinfo is None:
-        value = value.replace(tzinfo=timezone.utc)
-    return value.astimezone(timezone.utc).isoformat()
+        value = value.replace(tzinfo=UTC)
+    return value.astimezone(UTC).isoformat()
 
 
 def parse_dt(value: str | None) -> datetime | None:
     if not value:
         return None
-    return datetime.fromisoformat(value)
+    parsed = datetime.fromisoformat(value)
+    # Persisted timestamps are always UTC ISO strings, but guard against
+    # legacy / hand-edited rows that may be naive to avoid aware/naive
+    # subtraction crashes in remaining_seconds()/elapsed_seconds().
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=UTC)
+    return parsed
 
 
 def parse_user_datetime(value: str | None) -> datetime | None:
@@ -123,10 +129,7 @@ def sparkline(values: list[int]) -> str:
 def coerce_tags(raw: str | list[str] | tuple[str, ...] | None) -> list[str]:
     if raw is None:
         return []
-    if isinstance(raw, (list, tuple)):
-        source = raw
-    else:
-        source = re.split(r"[, ]+", raw.strip())
+    source = raw if isinstance(raw, (list, tuple)) else re.split(r"[, ]+", raw.strip())
     return sorted({tag.strip().lstrip("#").lower() for tag in source if tag and tag.strip()})
 
 
@@ -178,8 +181,7 @@ def _discover_tui_window_address() -> str | None:
 
     for client in clients:
         classes = " ".join(
-            str(client.get(key) or "")
-            for key in ("class", "initialClass", "title", "initialTitle")
+            str(client.get(key) or "") for key in ("class", "initialClass", "title", "initialTitle")
         ).lower()
         if APP_SLUG in classes:
             address = str(client.get("address") or "").strip()
@@ -207,10 +209,8 @@ def register_tui_window() -> None:
 
 
 def clear_tui_window_state() -> None:
-    try:
+    with contextlib.suppress(FileNotFoundError):
         TUI_WINDOW_PATH.unlink()
-    except FileNotFoundError:
-        pass
 
 
 def focus_existing_tui() -> bool:

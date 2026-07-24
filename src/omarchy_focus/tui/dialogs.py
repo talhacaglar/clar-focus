@@ -127,7 +127,11 @@ class TaskEditorScreen(ModalScreen[TaskEditorResult | None]):
                 id="priority",
             )
             yield Label("Tags")
-            yield Input(value=" ".join(getattr(self.task_data, "tags", ())), placeholder="#deep-work #client", id="tags")
+            yield Input(
+                value=" ".join(getattr(self.task_data, "tags", ())),
+                placeholder="#deep-work #client",
+                id="tags",
+            )
             yield Label("Estimated Minutes")
             yield Input(
                 value=str(getattr(self.task_data, "estimated_minutes", "") or ""),
@@ -229,7 +233,8 @@ class FilterScreen(ModalScreen[TaskFilters | None]):
             yield Static("Filter Tasks", classes="dialog-title")
             yield Label("Status")
             yield Select(
-                [("Any", "any")] + [(item.value.replace("_", " ").title(), item.value) for item in TaskStatus],
+                [("Any", "any")]
+                + [(item.value.replace("_", " ").title(), item.value) for item in TaskStatus],
                 value=self.current.status.value if self.current.status else "any",
                 id="status",
             )
@@ -465,8 +470,8 @@ class BlockedSitesScreen(ModalScreen[bool]):
         self._load_selected(max(0, event.data_table.cursor_row))
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
-        from .app import OmarchyFocusApp
         from ..exceptions import FocusModeError
+        from .app import OmarchyFocusApp
 
         app = self.app
         assert isinstance(app, OmarchyFocusApp)

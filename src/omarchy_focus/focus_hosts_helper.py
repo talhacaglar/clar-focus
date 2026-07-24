@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 import argparse
-from dataclasses import asdict, dataclass
 import json
 import os
-from pathlib import Path
 import tempfile
-from typing import Iterable
+from collections.abc import Iterable
+from dataclasses import asdict, dataclass
+from pathlib import Path
 
 DEFAULT_HOSTS_PATH = Path("/etc/hosts")
 BEGIN_MARKER = "# >>> OMARCHY_FOCUS START"
@@ -87,6 +87,14 @@ def inspect_hosts_file(hosts_path: Path = DEFAULT_HOSTS_PATH) -> HostsStatus:
 
 def strip_managed_block(content: str) -> str:
     lines = content.splitlines()
+    # If a BEGIN marker is present without a matching END marker (e.g. the file
+    # was truncated mid-write), removing everything after BEGIN would wipe the
+    # user's real hosts entries. In that case leave the content untouched.
+    if BEGIN_MARKER in lines:
+        start = lines.index(BEGIN_MARKER)
+        if END_MARKER not in lines[start + 1 :]:
+            return "\n".join(lines).rstrip() + "\n"
+
     cleaned: list[str] = []
     skip = False
     for line in lines:
@@ -124,9 +132,35 @@ def render_managed_block(
 
 
 def _atomic_write(path: Path, content: str) -> None:
+    # Preserve the original file's permissions and ownership. Without this the
+    # temp file (created 0600, owned by root) would replace /etc/hosts and make
+    # it unreadable to services like systemd-resolved.
+    mode: int | None = None
+    uid: int | None = None
+    gid: int | None = None
+    try:
+        info = path.stat()
+        mode = info.st_mode & 0o777
+        uid = info.st_uid
+        gid = info.st_gid
+    except FileNotFoundError:
+        pass
+
     with tempfile.NamedTemporaryFile("w", encoding="utf-8", dir=path.parent, delete=False) as handle:
         handle.write(content)
+        handle.flush()
+        os.fsync(handle.fileno())
         temp_path = Path(handle.name)
+
+    if mode is None:
+        # New file: use the conventional world-readable hosts permissions.
+        mode = 0o644
+    try:
+        os.chmod(temp_path, mode)
+        if uid is not None and gid is not None and os.geteuid() == 0:
+            os.chown(temp_path, uid, gid)
+    except OSError:
+        pass
     os.replace(temp_path, path)
 
 
@@ -174,7 +208,9 @@ def build_parser() -> argparse.ArgumentParser:
     apply_parser.add_argument("--session-id", required=True)
     apply_parser.add_argument("--strict", action="store_true")
     apply_parser.add_argument("--started-at", required=True)
-    apply_parser.add_argument("--owner", default=os.environ.get("SUDO_USER") or os.environ.get("USER") or "unknown")
+    apply_parser.add_argument(
+        "--owner", default=os.environ.get("SUDO_USER") or os.environ.get("USER") or "unknown"
+    )
     apply_parser.add_argument("sites", nargs="+")
 
     clear_parser = subparsers.add_parser("clear")

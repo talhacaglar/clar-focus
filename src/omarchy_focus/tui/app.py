@@ -8,10 +8,19 @@ from typing import Any
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Grid, Horizontal, Vertical
+from textual.theme import Theme
 from textual.widgets import DataTable, Footer, Header, Input, Static, TabbedContent, TabPane
 
 from ..bootstrap import build_services
-from ..models import FocusStateSnapshot, PomodoroStateSnapshot, SessionPhase, SessionType, StatsSnapshot, Task, TaskFilters
+from ..models import (
+    FocusStateSnapshot,
+    PomodoroStateSnapshot,
+    SessionPhase,
+    SessionType,
+    StatsSnapshot,
+    Task,
+    TaskFilters,
+)
 from ..paths import APP_NAME
 from ..utils import (
     format_datetime,
@@ -33,6 +42,53 @@ from .dialogs import (
     TaskEditorResult,
     TaskEditorScreen,
 )
+
+# Signature "midnight gold" dark theme: deep blue-steel surfaces with warm
+# gold accents. The custom $gold / $gold-soft variables are consumed by
+# app.tcss so the branded accent survives theme switches.
+MIDNIGHT_GOLD = Theme(
+    name="midnight-gold",
+    primary="#b8984e",
+    secondary="#5b7bb4",
+    accent="#f6e4b2",
+    success="#8dd3b4",
+    warning="#f6d47c",
+    error="#f09aa6",
+    foreground="#dbe4ff",
+    background="#070b12",
+    surface="#0b111b",
+    panel="#0f1522",
+    dark=True,
+    variables={
+        "gold": "#b8984e",
+        "gold-soft": "#f6e4b2",
+    },
+)
+
+# Light counterpart: warm parchment surfaces with the same gold accent, tuned
+# for readable contrast in bright environments.
+DAYLIGHT_GOLD = Theme(
+    name="daylight-gold",
+    primary="#9a7b32",
+    secondary="#3b5c94",
+    accent="#8a6d24",
+    success="#2b8a58",
+    warning="#b8860b",
+    error="#c0392b",
+    foreground="#1b2330",
+    background="#f5f2ea",
+    surface="#fffdf7",
+    panel="#efe9db",
+    dark=False,
+    variables={
+        "gold": "#9a7b32",
+        "gold-soft": "#7a5f1e",
+    },
+)
+
+# Persisted in the settings table under this key.
+THEME_SETTING_KEY = "theme_variant"
+THEMES_BY_NAME = {MIDNIGHT_GOLD.name: MIDNIGHT_GOLD, DAYLIGHT_GOLD.name: DAYLIGHT_GOLD}
 
 
 class OmarchyFocusApp(App[None]):
@@ -58,12 +114,19 @@ class OmarchyFocusApp(App[None]):
         Binding("g", "show_dashboard", "Dashboard"),
         Binding("i", "show_statistics", "Statistics"),
         Binding("comma", "show_settings", "Settings"),
+        Binding("f2", "toggle_theme", "Theme (light/dark)"),
         Binding("question_mark", "show_help", "Help"),
     ]
 
     def __init__(self) -> None:
         super().__init__()
         self.services = build_services()
+        # Register and select the theme before the app's CSS is parsed so the
+        # custom $gold / $gold-soft variables from app.tcss resolve correctly.
+        self.register_theme(MIDNIGHT_GOLD)
+        self.register_theme(DAYLIGHT_GOLD)
+        saved_theme = self.services.settings.get(THEME_SETTING_KEY, MIDNIGHT_GOLD.name)
+        self.theme = saved_theme if saved_theme in THEMES_BY_NAME else MIDNIGHT_GOLD.name
         self.filters = TaskFilters(sort_by="priority_desc")
         self.selected_task_id: int | None = None
         self.selected_focus_domain: str | None = None
@@ -92,35 +155,32 @@ class OmarchyFocusApp(App[None]):
                 yield Static(id="task-chip", classes="status-chip")
                 yield Static(id="summary-chip", classes="status-chip")
             with TabbedContent(initial=str(self.services.settings.get("default_view")), id="views"):
-                with TabPane("Dashboard", id="dashboard"):
-                    with Grid(id="dashboard-grid"):
-                        yield Static(id="dashboard-summary", classes="panel")
-                        yield Static(id="dashboard-detail", classes="panel")
-                        with Vertical(id="dashboard-tasks-panel", classes="panel"):
-                            yield Static("Today Queue", classes="panel-title")
-                            yield DataTable(id="dashboard-tasks")
-                        yield Static(id="dashboard-pomodoro", classes="panel")
-                        yield Static(id="dashboard-focus", classes="panel")
-                        yield Static(id="dashboard-stats", classes="panel")
-                with TabPane("Tasks", id="tasks"):
-                    with Horizontal(id="tasks-layout"):
-                        with Vertical(id="tasks-main"):
-                            yield Static("Task Explorer", classes="panel panel-title")
-                            yield Input(placeholder="Search tasks…", id="task-search")
-                            yield Static(id="task-filter-summary", classes="panel")
-                            yield DataTable(id="tasks-table")
-                        with Vertical(id="tasks-side"):
-                            yield Static(id="task-detail", classes="panel")
-                            yield Static(id="task-quick-actions", classes="panel")
-                with TabPane("Focus Session", id="focus"):
-                    with Horizontal(id="focus-layout"):
-                        with Vertical(id="focus-main"):
-                            yield Static(id="focus-status", classes="panel")
-                            yield DataTable(id="focus-sites-table")
-                        with Vertical(id="focus-side"):
-                            yield Static(id="focus-controls", classes="panel")
-                            yield Static(id="focus-history", classes="panel")
-                with TabPane("Statistics", id="statistics"):
+                with TabPane("Dashboard", id="dashboard"), Grid(id="dashboard-grid"):
+                    yield Static(id="dashboard-summary", classes="panel")
+                    yield Static(id="dashboard-detail", classes="panel")
+                    with Vertical(id="dashboard-tasks-panel", classes="panel"):
+                        yield Static("Today Queue", classes="panel-title")
+                        yield DataTable(id="dashboard-tasks")
+                    yield Static(id="dashboard-pomodoro", classes="panel")
+                    yield Static(id="dashboard-focus", classes="panel")
+                    yield Static(id="dashboard-stats", classes="panel")
+                with TabPane("Tasks", id="tasks"), Horizontal(id="tasks-layout"):
+                    with Vertical(id="tasks-main"):
+                        yield Static("Task Explorer", classes="panel panel-title")
+                        yield Input(placeholder="Search tasks…", id="task-search")
+                        yield Static(id="task-filter-summary", classes="panel")
+                        yield DataTable(id="tasks-table")
+                    with Vertical(id="tasks-side"):
+                        yield Static(id="task-detail", classes="panel")
+                        yield Static(id="task-quick-actions", classes="panel")
+                with TabPane("Focus Session", id="focus"), Horizontal(id="focus-layout"):
+                    with Vertical(id="focus-main"):
+                        yield Static(id="focus-status", classes="panel")
+                        yield DataTable(id="focus-sites-table")
+                    with Vertical(id="focus-side"):
+                        yield Static(id="focus-controls", classes="panel")
+                        yield Static(id="focus-history", classes="panel")
+                with TabPane("Statistics", id="statistics"):  # noqa: SIM117 - Textual compose tree
                     with Horizontal(id="statistics-layout"):
                         with Vertical(id="stats-main"):
                             yield Static(id="stats-overview", classes="panel")
@@ -128,13 +188,12 @@ class OmarchyFocusApp(App[None]):
                         with Vertical(id="stats-side"):
                             yield Static(id="stats-tasks", classes="panel")
                             yield Static(id="stats-focus", classes="panel")
-                with TabPane("Settings", id="settings"):
-                    with Horizontal(id="settings-layout"):
-                        with Vertical(id="settings-main"):
-                            yield Static(id="settings-summary", classes="panel")
-                            yield DataTable(id="settings-table")
-                        with Vertical(id="settings-side"):
-                            yield Static(id="settings-hints", classes="panel")
+                with TabPane("Settings", id="settings"), Horizontal(id="settings-layout"):
+                    with Vertical(id="settings-main"):
+                        yield Static(id="settings-summary", classes="panel")
+                        yield DataTable(id="settings-table")
+                    with Vertical(id="settings-side"):
+                        yield Static(id="settings-hints", classes="panel")
                 with TabPane("Help", id="help"):
                     yield Static(id="help-pane")
         yield Footer()
@@ -431,7 +490,10 @@ class OmarchyFocusApp(App[None]):
             )
         )
         stats = self._cached_stats
-        top_blocked = ", ".join(f"{site} ({count})" for site, count in stats.blocked_sites) or "No recent focus sessions"
+        top_blocked = (
+            ", ".join(f"{site} ({count})" for site, count in stats.blocked_sites)
+            or "No recent focus sessions"
+        )
         self.query_one("#focus-history", Static).update(
             "\n".join(
                 [
@@ -479,9 +541,10 @@ class OmarchyFocusApp(App[None]):
                 ]
             )
         )
-        top_tasks = "\n".join(
-            f"{title[:22]:<22} {minutes:>4}m" for title, minutes in stats.top_task_focus
-        ) or "No task-linked sessions yet."
+        top_tasks = (
+            "\n".join(f"{title[:22]:<22} {minutes:>4}m" for title, minutes in stats.top_task_focus)
+            or "No task-linked sessions yet."
+        )
         self.query_one("#stats-tasks", Static).update(
             "\n".join(
                 [
@@ -491,9 +554,10 @@ class OmarchyFocusApp(App[None]):
                 ]
             )
         )
-        blocked = "\n".join(
-            f"{site:<26} {count}" for site, count in stats.blocked_sites
-        ) or "No blocked site hits yet."
+        blocked = (
+            "\n".join(f"{site:<26} {count}" for site, count in stats.blocked_sites)
+            or "No blocked site hits yet."
+        )
         self.query_one("#stats-focus", Static).update(
             "\n".join(
                 [
@@ -512,7 +576,9 @@ class OmarchyFocusApp(App[None]):
         for key, value in values.items():
             self._setting_row_map.append(key)
             table.add_row(key, str(value))
-        self.selected_setting_key = self.selected_setting_key or (self._setting_row_map[0] if self._setting_row_map else None)
+        self.selected_setting_key = self.selected_setting_key or (
+            self._setting_row_map[0] if self._setting_row_map else None
+        )
         self.query_one("#settings-summary", Static).update(
             "\n".join(
                 [
@@ -549,6 +615,7 @@ class OmarchyFocusApp(App[None]):
                     "a add task       e edit           d delete          x complete",
                     "/ search         f filter         s pomodoro        p pause/resume",
                     "m toggle focus   b blocked sites  ? help            q quit",
+                    "F2 toggle light/dark theme",
                     "",
                     "Waybar integration",
                     "Left click opens the TUI.",
@@ -598,6 +665,13 @@ class OmarchyFocusApp(App[None]):
 
     def action_show_help(self) -> None:
         self.show_view("help")
+
+    def action_toggle_theme(self) -> None:
+        new_theme = DAYLIGHT_GOLD.name if self.theme == MIDNIGHT_GOLD.name else MIDNIGHT_GOLD.name
+        self.theme = new_theme
+        self.services.settings.set(THEME_SETTING_KEY, new_theme)
+        label = "Light" if new_theme == DAYLIGHT_GOLD.name else "Dark"
+        self.notify(f"Theme: {label}", timeout=2)
 
     def action_app_quit(self) -> None:
         self.exit()

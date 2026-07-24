@@ -114,16 +114,21 @@ class ServiceFlowTest(unittest.TestCase):
         self.assertEqual(stopped.phase.value, "idle")
 
     def test_pomodoro_start_rolls_back_when_focus_fails(self) -> None:
-        with patch.object(self.focus, "start", side_effect=Exception("boom")):
-            with self.assertRaises(Exception):
-                self.pomodoro.start(minutes=1, auto_focus=True)
+        # Intentionally assert on a broad Exception: the point of this test is
+        # that *any* failure inside start() triggers a full rollback.
+        with (
+            patch.object(self.focus, "start", side_effect=Exception("boom")),
+            self.assertRaises(Exception),  # noqa: B017 - rollback-on-any-error
+        ):
+            self.pomodoro.start(minutes=1, auto_focus=True)
         self.assertIsNone(self.pomodoro._load_raw())
 
     def test_work_completion_creates_pending_break_prompt(self) -> None:
         task = self.tasks.add_task("Deep work")
-        with patch("omarchy_focus.services.pomodoro.play_alert_sound") as play_sound, patch(
-            "omarchy_focus.services.pomodoro.focus_app_tui"
-        ) as focus_tui:
+        with (
+            patch("omarchy_focus.services.pomodoro.play_alert_sound") as play_sound,
+            patch("omarchy_focus.services.pomodoro.focus_app_tui") as focus_tui,
+        ):
             self.pomodoro.start(task_id=task.id, minutes=1, auto_focus=False)
             raw = self.pomodoro._load_raw()
             assert raw is not None
@@ -214,8 +219,9 @@ class ServiceFlowTest(unittest.TestCase):
         raw["ends_at"] = "2000-01-01T00:00:00+00:00"
         raw["remaining_seconds"] = 0
         self.pomodoro._save_raw(raw)
-        with patch("omarchy_focus.services.pomodoro.play_alert_sound"), patch(
-            "omarchy_focus.services.pomodoro.focus_app_tui"
+        with (
+            patch("omarchy_focus.services.pomodoro.play_alert_sound"),
+            patch("omarchy_focus.services.pomodoro.focus_app_tui"),
         ):
             self.pomodoro.tick()
 
@@ -248,6 +254,43 @@ class ServiceFlowTest(unittest.TestCase):
         payload = render_waybar(services, json_mode=False)
         self.assertTrue(payload.startswith("󰈈 "))
         self.assertNotIn("Focus", payload)
+
+    def test_schema_version_is_recorded(self) -> None:
+        from omarchy_focus.database import SCHEMA_VERSION
+
+        row = self.db.fetchone("PRAGMA user_version")
+        self.assertEqual(int(row[0]), SCHEMA_VERSION)
+
+    def test_expected_indexes_exist(self) -> None:
+        rows = self.db.fetchall("SELECT name FROM sqlite_master WHERE type = 'index'")
+        names = {row["name"] for row in rows}
+        for expected in ("idx_tasks_status", "idx_pomodoro_lookup", "idx_focus_active"):
+            self.assertIn(expected, names)
+
+    def test_theme_setting_roundtrip(self) -> None:
+        from omarchy_focus.tui.app import (
+            DAYLIGHT_GOLD,
+            MIDNIGHT_GOLD,
+            THEME_SETTING_KEY,
+            THEMES_BY_NAME,
+        )
+
+        # Default matches the dark signature theme and both themes are known.
+        self.assertEqual(self.settings.get(THEME_SETTING_KEY), MIDNIGHT_GOLD.name)
+        self.assertIn(MIDNIGHT_GOLD.name, THEMES_BY_NAME)
+        self.assertIn(DAYLIGHT_GOLD.name, THEMES_BY_NAME)
+        # The toggle persists the light theme so it survives a restart.
+        self.settings.set(THEME_SETTING_KEY, DAYLIGHT_GOLD.name)
+        self.assertEqual(self.settings.get(THEME_SETTING_KEY), DAYLIGHT_GOLD.name)
+
+    def test_stats_markdown_report(self) -> None:
+        from omarchy_focus.cli import _render_stats_markdown
+
+        self.tasks.add_task("Write report")
+        report = _render_stats_markdown(self.stats.snapshot())
+        self.assertIn("# Clar Focus — Report", report)
+        self.assertIn("## Today", report)
+        self.assertIn("## This week", report)
 
     def test_focus_recover_preserves_state_when_hosts_unreadable(self) -> None:
         snapshot = FocusStateSnapshot(

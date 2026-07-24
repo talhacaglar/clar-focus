@@ -151,7 +151,9 @@ class TaskService:
             "priority": TaskPriority(priority or task.priority).value,
             "status": TaskStatus(status or task.status).value,
             "tags_json": json.dumps(coerce_tags(tags) if tags is not None else list(task.tags)),
-            "estimated_minutes": estimated_minutes if estimated_minutes is not None else task.estimated_minutes,
+            "estimated_minutes": estimated_minutes
+            if estimated_minutes is not None
+            else task.estimated_minutes,
             "due_at": to_iso(parse_user_datetime(due_at)) if due_at is not None else to_iso(task.due_at),
             "updated_at": to_iso(utc_now()),
         }

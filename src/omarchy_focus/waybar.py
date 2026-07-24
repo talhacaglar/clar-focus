@@ -34,7 +34,10 @@ def build_waybar_payload(services: ServiceContainer) -> dict[str, object]:
         )
         return {"text": text, "tooltip": tooltip, "class": "pomodoro"}
 
-    if pomodoro.phase == SessionPhase.RUNNING and pomodoro.session_type in {SessionType.SHORT_BREAK, SessionType.LONG_BREAK}:
+    if pomodoro.phase == SessionPhase.RUNNING and pomodoro.session_type in {
+        SessionType.SHORT_BREAK,
+        SessionType.LONG_BREAK,
+    }:
         label = "Long Break" if pomodoro.session_type == SessionType.LONG_BREAK else "Break"
         return {
             "text": f"󰁅 {seconds_to_clock(pomodoro.remaining_seconds)}",

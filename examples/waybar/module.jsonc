@@ -2,7 +2,10 @@
   "custom/clar-focus": {
     "exec": "~/.local/bin/clar-focus-waybar status",
     "return-type": "json",
-    "interval": 1,
+    // Countdown stays smooth at a 2s poll; the app also pushes instant
+    // updates via SIGRTMIN+12 on every state change, so a lower interval is
+    // wasted CPU/battery when idle.
+    "interval": 2,
     "signal": 12,
     "on-click": "~/.local/bin/clar-focus-waybar open",
     "on-click-right": "~/.local/bin/clar-focus-waybar toggle-pomodoro",

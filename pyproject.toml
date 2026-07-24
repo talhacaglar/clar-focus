@@ -16,6 +16,13 @@ dependencies = [
   "textual>=0.58.1"
 ]
 
+[project.optional-dependencies]
+dev = [
+  "ruff>=0.6",
+  "mypy>=1.11",
+  "pytest>=8.0",
+]
+
 [project.scripts]
 clar-focus = "omarchy_focus.cli:main"
 clar-focus-hosts-helper = "omarchy_focus.focus_hosts_helper:main"
@@ -35,3 +42,27 @@ include = [
   "examples",
   "tests",
 ]
+
+[tool.ruff]
+line-length = 110
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["omarchy_focus"]
+
+[tool.mypy]
+python_version = "3.12"
+packages = ["omarchy_focus"]
+mypy_path = "src"
+ignore_missing_imports = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

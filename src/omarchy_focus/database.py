@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from contextlib import contextmanager
 import sqlite3
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
-from typing import Iterator
 
 from .paths import DB_PATH, ensure_app_dirs
 from .utils import json_dumps, to_iso, utc_now
@@ -17,6 +17,11 @@ DEFAULT_BLOCKED_SITES = (
     "instagram.com",
     "www.instagram.com",
 )
+
+# Bump this whenever a migration step is added below. The value is stored in
+# SQLite's PRAGMA user_version so existing databases can evolve without data
+# loss.
+SCHEMA_VERSION = 1
 
 
 class Database:
@@ -94,6 +99,15 @@ class Database:
                     value_json TEXT NOT NULL,
                     updated_at TEXT NOT NULL
                 );
+
+                CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
+                CREATE INDEX IF NOT EXISTS idx_tasks_completed_at ON tasks(completed_at);
+                CREATE INDEX IF NOT EXISTS idx_tasks_due_at ON tasks(due_at);
+                CREATE INDEX IF NOT EXISTS idx_pomodoro_lookup
+                    ON pomodoro_sessions(session_type, completed, started_at);
+                CREATE INDEX IF NOT EXISTS idx_pomodoro_task ON pomodoro_sessions(task_id);
+                CREATE INDEX IF NOT EXISTS idx_focus_active ON focus_sessions(active);
+                CREATE INDEX IF NOT EXISTS idx_focus_started ON focus_sessions(started_at);
                 """
             )
             created_at = to_iso(utc_now())
@@ -104,6 +118,21 @@ class Database:
                 """,
                 [(domain, created_at) for domain in DEFAULT_BLOCKED_SITES],
             )
+            self._run_migrations(conn)
+
+    def _run_migrations(self, conn: sqlite3.Connection) -> None:
+        """Apply incremental schema migrations based on PRAGMA user_version.
+
+        Add a new ``if current < N`` block (and bump ``SCHEMA_VERSION``) for each
+        future schema change so existing databases upgrade in place.
+        """
+        current = int(conn.execute("PRAGMA user_version").fetchone()[0])
+        if current >= SCHEMA_VERSION:
+            return
+        # v0 -> v1: baseline. The CREATE ... IF NOT EXISTS statements above bring
+        # legacy databases up to the v1 shape (tables + indexes); nothing extra
+        # to do here beyond recording the version.
+        conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
 
     @contextmanager
     def connection(self) -> Iterator[sqlite3.Connection]:

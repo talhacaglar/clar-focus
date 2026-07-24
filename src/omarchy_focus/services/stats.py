@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import json
 from collections import Counter
-from datetime import timedelta
+from datetime import UTC, timedelta
 
 from ..database import Database
 from ..models import StatsSnapshot
-from ..utils import local_now, parse_dt, start_of_day, start_of_week
+from ..utils import local_now, start_of_day, start_of_week
 
 
 class StatsService:
@@ -18,8 +18,12 @@ class StatsService:
     def snapshot(self) -> StatsSnapshot:
         today = start_of_day()
         week = start_of_week()
-        today_iso = today.astimezone().isoformat()
-        week_iso = week.astimezone().isoformat()
+        # started_at / completed_at are persisted as UTC ISO strings, so the
+        # comparison bounds must also be expressed in UTC. Building them from
+        # the local day/week boundaries keeps "today" correct for the user
+        # while comparing apples to apples with the stored values.
+        today_iso = today.astimezone(UTC).isoformat()
+        week_iso = week.astimezone(UTC).isoformat()
 
         today_pomodoros = self.db.fetchone(
             """
@@ -94,7 +98,7 @@ class StatsService:
             GROUP BY date(started_at, 'localtime')
             ORDER BY day ASC
             """,
-            ((local_now() - timedelta(days=6)).astimezone().isoformat(),),
+            ((local_now() - timedelta(days=6)).astimezone(UTC).isoformat(),),
         )
         totals_by_day = {row["day"]: int(row["total"] // 60) for row in day_rows}
         focus_days: list[tuple[str, int]] = []

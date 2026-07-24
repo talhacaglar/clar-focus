@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import argparse
-from dataclasses import asdict
 import json
 import sys
+from dataclasses import asdict
 from typing import Any
 
 from .bootstrap import build_services
@@ -24,7 +24,9 @@ from .waybar import render_waybar
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="clar-focus", description=f"{APP_NAME} tasklist + pomodoro + focus manager")
+    parser = argparse.ArgumentParser(
+        prog="clar-focus", description=f"{APP_NAME} tasklist + pomodoro + focus manager"
+    )
     subparsers = parser.add_subparsers(dest="command")
 
     subparsers.add_parser("tui")
@@ -39,7 +41,20 @@ def build_parser() -> argparse.ArgumentParser:
     start_parser = subparsers.add_parser("start")
     start_parser.add_argument("--task-id", type=int)
     start_parser.add_argument("--minutes", type=int)
-    start_parser.add_argument("--focus", action="store_true")
+    focus_group = start_parser.add_mutually_exclusive_group()
+    focus_group.add_argument(
+        "--focus",
+        dest="focus",
+        action="store_true",
+        default=None,
+        help="Also enable focus mode for this session",
+    )
+    focus_group.add_argument(
+        "--no-focus",
+        dest="focus",
+        action="store_false",
+        help="Do not enable focus mode even if focus_on_pomodoro_start is set",
+    )
     start_parser.add_argument("--strict", action="store_true")
 
     subparsers.add_parser("pause")
@@ -50,13 +65,21 @@ def build_parser() -> argparse.ArgumentParser:
     add_task_parser = subparsers.add_parser("add-task")
     add_task_parser.add_argument("title")
     add_task_parser.add_argument("--description", default="")
-    add_task_parser.add_argument("--priority", choices=[item.value for item in TaskPriority], default="medium")
+    add_task_parser.add_argument(
+        "--priority", choices=[item.value for item in TaskPriority], default="medium"
+    )
     add_task_parser.add_argument("--tags", default="")
     add_task_parser.add_argument("--estimate", type=int)
     add_task_parser.add_argument("--due")
 
     stats_parser = subparsers.add_parser("stats")
-    stats_parser.add_argument("--json", action="store_true")
+    stats_output = stats_parser.add_mutually_exclusive_group()
+    stats_output.add_argument("--json", action="store_true")
+    stats_output.add_argument(
+        "--md",
+        action="store_true",
+        help="Render a Markdown report (handy for daily/weekly retrospectives)",
+    )
 
     tasks_parser = subparsers.add_parser("tasks")
     tasks_subparsers = tasks_parser.add_subparsers(dest="tasks_command", required=True)
@@ -199,6 +222,36 @@ def _render_status(services: Any, *, as_json: bool = False) -> str:
     return f"Idle | {pending} pending task(s)"
 
 
+def _render_stats_markdown(stats: Any) -> str:
+    """Render a stats snapshot as a Markdown retrospective report."""
+    from datetime import date
+
+    lines = [
+        f"# Clar Focus — Report ({date.today().isoformat()})",
+        "",
+        "## Today",
+        f"- Completed pomodoros: **{stats.today_completed_pomodoros}**",
+        f"- Focus time: **{minutes_to_label(stats.today_focus_minutes)}**",
+        f"- Completed tasks: **{stats.completed_tasks_today}**",
+        "",
+        "## This week",
+        f"- Focus time: **{minutes_to_label(stats.week_focus_minutes)}**",
+        f"- Completed tasks: **{stats.completed_tasks_week}**",
+        f"- Focus sessions: **{stats.focus_sessions_week}**",
+        f"- Current streak: **{stats.streak_days} day(s)**",
+    ]
+    if stats.top_task_focus:
+        lines += ["", "## Top tasks (by focus time)"]
+        lines += [f"- {title}: {minutes_to_label(minutes)}" for title, minutes in stats.top_task_focus]
+    if stats.blocked_sites:
+        lines += ["", "## Most-blocked sites"]
+        lines += [f"- {site}: {count} session(s)" for site, count in stats.blocked_sites]
+    if stats.focus_days:
+        lines += ["", "## Daily focus (last 7 days)"]
+        lines += [f"- {label}: {minutes_to_label(minutes)}" for label, minutes in stats.focus_days]
+    return "\n".join(lines)
+
+
 def _coerce_setting(value: str) -> Any:
     lowered = value.lower()
     if lowered in {"true", "false"}:
@@ -267,6 +320,8 @@ def main(argv: list[str] | None = None) -> int:
             stats = services.stats.snapshot()
             if args.json:
                 print(json.dumps(stats.__dict__, ensure_ascii=False, indent=2))
+            elif args.md:
+                print(_render_stats_markdown(stats))
             else:
                 print(
                     "\n".join(
@@ -295,7 +350,9 @@ def main(argv: list[str] | None = None) -> int:
                 for task in tasks:
                     tags = f" [{' '.join('#' + tag for tag in task.tags)}]" if task.tags else ""
                     due = f" | due {format_datetime(task.due_at)}" if task.due_at else ""
-                    estimate = f" | est {minutes_to_label(task.estimated_minutes)}" if task.estimated_minutes else ""
+                    estimate = (
+                        f" | est {minutes_to_label(task.estimated_minutes)}" if task.estimated_minutes else ""
+                    )
                     print(
                         f"{task.id:>3}  {task.priority.value:<6}  {task.status.value:<11}  {task.title}{tags}{estimate}{due}"
                     )

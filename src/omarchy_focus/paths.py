@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import os
-from pathlib import Path
 import shutil
+from pathlib import Path
 
 APP_NAME = "Clar Focus"
 APP_SLUG = "clar-focus"

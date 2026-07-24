@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from datetime import timedelta
+import contextlib
 import json
+from datetime import timedelta
 
 from ..database import Database
 from ..exceptions import PomodoroError
@@ -155,11 +156,7 @@ class PomodoroService:
         if current.phase in {SessionPhase.RUNNING, SessionPhase.PAUSED}:
             self.stop(reason="restarted")
 
-        auto_focus = (
-            self.settings.get("focus_on_pomodoro_start")
-            if auto_focus is None
-            else auto_focus
-        )
+        auto_focus = self.settings.get("focus_on_pomodoro_start") if auto_focus is None else auto_focus
         strict_focus = self.settings.get("strict_mode_default") if strict_focus is None else strict_focus
         duration_minutes = minutes or int(self.settings.get("pomodoro_work_minutes"))
         started_at = utc_now()
@@ -193,10 +190,8 @@ class PomodoroService:
             self._save_raw(self._snapshot_to_raw(snapshot))
         except Exception:
             if focus_started:
-                try:
+                with contextlib.suppress(Exception):
                     self.focus.stop(force=True, interactive=False, reason="Rolled back failed pomodoro start")
-                except Exception:
-                    pass
             raise
         notify(
             "Pomodoro started",
@@ -214,7 +209,9 @@ class PomodoroService:
         pending = self.pending_break() or {}
         break_type_value = str(pending.get("break_type", SessionType.SHORT_BREAK.value))
         break_type = SessionType(break_type_value)
-        duration_minutes = minutes or int(pending.get("minutes") or self.settings.get("pomodoro_short_break_minutes"))
+        duration_minutes = minutes or int(
+            pending.get("minutes") or self.settings.get("pomodoro_short_break_minutes")
+        )
         started_at = utc_now()
         ends_at = started_at + timedelta(minutes=duration_minutes)
         snapshot = PomodoroStateSnapshot(
@@ -274,10 +271,8 @@ class PomodoroService:
         self._record_session(snapshot, completed=False, interrupted=True, note=reason)
         self.db.delete_state(self.STATE_KEY)
         if snapshot.auto_focus and self.focus.status(check_expiry=False).active:
-            try:
+            with contextlib.suppress(Exception):
                 self.focus.stop(force=True, reason="Focus session ended with pomodoro")
-            except Exception:
-                pass
         poke_waybar()
         return PomodoroStateSnapshot()
 
@@ -321,10 +316,8 @@ class PomodoroService:
                 }
             )
             if snapshot.auto_focus and self.focus.status(check_expiry=False).active:
-                try:
+                with contextlib.suppress(Exception):
                     self.focus.stop(force=True, interactive=False, reason="Work session complete")
-                except Exception:
-                    pass
             notify(
                 "Pomodoro complete",
                 f"{minutes} minute break is ready",

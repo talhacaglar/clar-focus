@@ -1,16 +1,23 @@
+/*
+ * Styling is driven entirely by Textual theme variables so the UI adapts to
+ * both the dark ("midnight-gold") and light ("daylight-gold") themes. The
+ * signature gold accent is exposed through the custom $gold / $gold-soft
+ * variables registered in app.py.
+ */
+
 Screen {
-    background: #070b12;
-    color: #dbe4ff;
+    background: $background;
+    color: $foreground;
 }
 
 Header {
-    background: #090d16;
-    color: #f7e8bf;
+    background: $panel;
+    color: $gold-soft;
 }
 
 Footer {
-    background: #0c111b;
-    color: #c8d2f0;
+    background: $panel;
+    color: $foreground;
 }
 
 #app-shell {
@@ -22,17 +29,17 @@ Footer {
     height: auto;
     padding: 1 2;
     layout: horizontal;
-    background: #0a0f18;
-    border-bottom: solid #1f2938;
+    background: $surface;
+    border-bottom: solid $panel-lighten-2;
 }
 
 #brand-card {
     width: 34;
     min-width: 34;
     padding: 1 2;
-    background: #0f1522;
-    border: tall #b8984e;
-    color: #f6e4b2;
+    background: $panel;
+    border: tall $gold;
+    color: $gold-soft;
     margin-right: 1;
 }
 
@@ -41,9 +48,9 @@ Footer {
     width: 1fr;
     margin-right: 1;
     padding: 1 2;
-    background: #0f1522;
-    border: round #243043;
-    color: #d7def5;
+    background: $panel;
+    border: round $panel-lighten-2;
+    color: $foreground;
 }
 
 .status-chip:last-child {
@@ -60,14 +67,14 @@ TabPane {
 }
 
 .panel {
-    background: #0f1522;
-    border: round #223149;
+    background: $panel;
+    border: round $panel-lighten-2;
     padding: 1 2;
     margin: 0 1 1 0;
 }
 
 .panel-title {
-    color: #f6e4b2;
+    color: $gold-soft;
     text-style: bold;
 }
 
@@ -93,15 +100,15 @@ TabPane {
 }
 
 DataTable {
-    background: #0b111b;
-    border: round #243043;
-    color: #dbe4ff;
+    background: $surface;
+    border: round $panel-lighten-2;
+    color: $foreground;
     height: 1fr;
 }
 
 DataTable > .datatable--cursor {
-    background: #d2b15d 20%;
-    color: #fff8e7;
+    background: $gold 30%;
+    color: $text;
 }
 
 #tasks-layout,
@@ -137,8 +144,8 @@ DataTable > .datatable--cursor {
 
 Input, Select {
     margin-bottom: 1;
-    background: #0b111b;
-    border: round #223149;
+    background: $surface;
+    border: round $panel-lighten-2;
 }
 
 Button {
@@ -146,27 +153,27 @@ Button {
 }
 
 .muted {
-    color: #92a1bf;
+    color: $text-muted;
 }
 
 .accent {
-    color: #f6e4b2;
+    color: $gold-soft;
 }
 
 .success {
-    color: #8dd3b4;
+    color: $success;
 }
 
 .warning {
-    color: #f6d47c;
+    color: $warning;
 }
 
 .danger {
-    color: #f09aa6;
+    color: $error;
 }
 
 #help-pane Static {
-    background: #0f1522;
-    border: round #243043;
+    background: $panel;
+    border: round $panel-lighten-2;
     padding: 1 2;
 }
