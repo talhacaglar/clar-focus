@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "clar-focus"
 version = "0.1.0"
-description = "Premium terminal productivity suite for Arch Linux, Wayland, Hyprland, and Waybar."
+description = "Terminal productivity suite for Arch Linux, Hyprland, and Omarchy Shell."
 readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "MIT" }
@@ -41,6 +41,7 @@ include = [
   "install.sh",
   "examples",
   "tests",
+  "scripts",
 ]
 
 [tool.ruff]

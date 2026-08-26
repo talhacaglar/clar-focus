@@ -5,6 +5,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from omarchy_focus.bar import render_bar
 from omarchy_focus.database import Database
 from omarchy_focus.focus_hosts_helper import HostsStatus
 from omarchy_focus.models import FocusStateSnapshot
@@ -14,7 +15,6 @@ from omarchy_focus.services.stats import StatsService
 from omarchy_focus.services.tasks import TaskService
 from omarchy_focus.settings import SettingsService
 from omarchy_focus.utils import utc_now
-from omarchy_focus.waybar import render_waybar
 
 
 class ServiceFlowTest(unittest.TestCase):
@@ -53,6 +53,20 @@ class ServiceFlowTest(unittest.TestCase):
         reopened = self.tasks.update_task(task.id, status="pending")
         self.assertEqual(reopened.status.value, "pending")
         self.assertIsNone(reopened.completed_at)
+
+    def test_task_optional_fields_can_be_cleared_explicitly(self) -> None:
+        task = self.tasks.add_task(
+            "Schedule launch",
+            estimated_minutes=45,
+            due_at="2026-09-01 10:00",
+        )
+        updated = self.tasks.update_task(
+            task.id,
+            clear_estimated_minutes=True,
+            clear_due_at=True,
+        )
+        self.assertIsNone(updated.estimated_minutes)
+        self.assertIsNone(updated.due_at)
 
     def test_blocked_site_edit_and_toggle(self) -> None:
         self.focus.add_site("example.com", enabled=False)
@@ -198,7 +212,7 @@ class ServiceFlowTest(unittest.TestCase):
         self.assertEqual(snapshot.phase.value, "idle")
         self.assertIsNone(self.pomodoro._load_raw())
 
-    def test_stats_and_waybar_idle_output(self) -> None:
+    def test_stats_and_bar_idle_output(self) -> None:
         class Services:
             pass
 
@@ -208,7 +222,7 @@ class ServiceFlowTest(unittest.TestCase):
         services.focus = self.focus
         services.stats = self.stats
         services.tasks = self.tasks
-        payload = render_waybar(services, json_mode=False)
+        payload = render_bar(services, json_mode=False)
         self.assertIn("", payload)
 
     def test_stats_use_real_focus_session_count(self) -> None:
@@ -228,7 +242,7 @@ class ServiceFlowTest(unittest.TestCase):
         snapshot = self.stats.snapshot()
         self.assertEqual(snapshot.focus_sessions_week, 0)
 
-    def test_waybar_shows_countdown_for_timed_focus(self) -> None:
+    def test_bar_shows_countdown_for_timed_focus(self) -> None:
         class Services:
             pass
 
@@ -251,7 +265,7 @@ class ServiceFlowTest(unittest.TestCase):
                 return timed_focus
 
         services.focus = FocusStub()
-        payload = render_waybar(services, json_mode=False)
+        payload = render_bar(services, json_mode=False)
         self.assertTrue(payload.startswith("󰈈 "))
         self.assertNotIn("Focus", payload)
 

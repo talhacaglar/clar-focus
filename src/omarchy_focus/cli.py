@@ -8,6 +8,7 @@ import sys
 from dataclasses import asdict
 from typing import Any
 
+from .bar import render_bar
 from .bootstrap import build_services
 from .exceptions import FocusModeError, OmarchyFocusError, PomodoroError, TaskNotFoundError
 from .models import TaskFilters, TaskPriority, TaskStatus
@@ -20,7 +21,6 @@ from .utils import (
     minutes_to_label,
     seconds_to_clock,
 )
-from .waybar import render_waybar
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -35,8 +35,8 @@ def build_parser() -> argparse.ArgumentParser:
     status_parser = subparsers.add_parser("status")
     status_parser.add_argument("--json", action="store_true")
 
-    waybar_parser = subparsers.add_parser("waybar")
-    waybar_parser.add_argument("--plain", action="store_true")
+    bar_parser = subparsers.add_parser("bar", help="Render Omarchy bar status")
+    bar_parser.add_argument("--plain", action="store_true")
 
     start_parser = subparsers.add_parser("start")
     start_parser.add_argument("--task-id", type=int)
@@ -263,7 +263,10 @@ def _coerce_setting(value: str) -> Any:
 
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
-    args = parser.parse_args(argv)
+    normalized_argv = list(sys.argv[1:] if argv is None else argv)
+    if normalized_argv and normalized_argv[0] == "waybar":
+        normalized_argv[0] = "bar"
+    args = parser.parse_args(normalized_argv)
     if not args.command:
         return _launch_tui()
 
@@ -277,8 +280,8 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "status":
             print(_render_status(services, as_json=args.json))
             return 0
-        if args.command == "waybar":
-            print(render_waybar(services, json_mode=not args.plain))
+        if args.command == "bar":
+            print(render_bar(services, json_mode=not args.plain))
             return 0
         if args.command == "start":
             snapshot = services.pomodoro.start(

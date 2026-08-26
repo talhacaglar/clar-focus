@@ -17,4 +17,4 @@ def main() -> int:
 
 
 def indicator_main() -> int:
-    return cli_main(["waybar"])
+    return cli_main(["bar"])

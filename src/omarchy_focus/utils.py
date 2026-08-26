@@ -142,8 +142,13 @@ def json_dumps(value: Any) -> str:
     return json.dumps(value, ensure_ascii=False, sort_keys=True, default=default_serializer)
 
 
-def poke_waybar() -> None:
+def poke_status_bar() -> None:
+    """Refresh a legacy Waybar instance; Omarchy Shell polls automatically."""
     subprocess.run(["pkill", f"-RTMIN+{WAYBAR_SIGNAL}", "waybar"], check=False, capture_output=True)
+
+
+# Compatibility for third-party code that imported the old helper.
+poke_waybar = poke_status_bar
 
 
 def acquire_tui_lock() -> TextIO | None:

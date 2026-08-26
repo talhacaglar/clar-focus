@@ -11,6 +11,7 @@ from textual.screen import ModalScreen
 from textual.widgets import Button, Checkbox, DataTable, Input, Label, Select, Static
 
 from ..models import TaskFilters, TaskPriority, TaskStatus
+from ..utils import parse_user_datetime
 
 
 @dataclass(slots=True)
@@ -31,14 +32,16 @@ class QuickAddTaskScreen(ModalScreen[str | None]):
 
     #quick-add-task {
         width: 72;
+        max-width: 95%;
         height: auto;
-        background: #0f1522;
-        border: solid #a88c4a;
+        background: $panel;
+        color: $foreground;
+        border: tall $primary;
         padding: 1 2;
     }
 
     #quick-add-task .dialog-title {
-        color: #f6e5b6;
+        color: $accent;
         text-style: bold;
         padding-bottom: 1;
     }
@@ -51,12 +54,19 @@ class QuickAddTaskScreen(ModalScreen[str | None]):
         align: right middle;
         height: auto;
     }
+
+    #quick-add-error {
+        height: auto;
+        color: $error;
+        margin-bottom: 1;
+    }
     """
 
     def compose(self) -> ComposeResult:
         with Vertical(id="quick-add-task"):
             yield Static("Add Task", classes="dialog-title")
             yield Input(placeholder="Write report, call client, pay bill…", id="quick-task-title")
+            yield Static("", id="quick-add-error")
             with Horizontal(classes="button-row"):
                 yield Button("Cancel", variant="default", id="cancel")
                 yield Button("Add", variant="primary", id="save")
@@ -75,7 +85,10 @@ class QuickAddTaskScreen(ModalScreen[str | None]):
 
     def _submit(self) -> None:
         title = self.query_one("#quick-task-title", Input).value.strip()
-        self.dismiss(title or None)
+        if not title:
+            self.query_one("#quick-add-error", Static).update("Name the task before adding it.")
+            return
+        self.dismiss(title)
 
 
 class TaskEditorScreen(ModalScreen[TaskEditorResult | None]):
@@ -86,14 +99,16 @@ class TaskEditorScreen(ModalScreen[TaskEditorResult | None]):
 
     #task-editor {
         width: 88;
+        max-width: 95%;
         height: auto;
-        background: #0f1522;
-        border: solid #a88c4a;
+        background: $panel;
+        color: $foreground;
+        border: tall $primary;
         padding: 1 2;
     }
 
     #task-editor .dialog-title {
-        color: #f6e5b6;
+        color: $accent;
         text-style: bold;
         padding-bottom: 1;
     }
@@ -105,6 +120,12 @@ class TaskEditorScreen(ModalScreen[TaskEditorResult | None]):
     #task-editor .button-row {
         align: right middle;
         height: auto;
+    }
+
+    #task-editor-error {
+        height: auto;
+        color: $error;
+        margin-bottom: 1;
     }
     """
 
@@ -140,9 +161,11 @@ class TaskEditorScreen(ModalScreen[TaskEditorResult | None]):
             )
             yield Label("Due Date / Time")
             due_value = ""
-            if getattr(self.task_data, "due_at", None):
-                due_value = self.task_data.due_at.astimezone().strftime("%Y-%m-%d %H:%M")
+            due_at = getattr(self.task_data, "due_at", None)
+            if due_at:
+                due_value = due_at.astimezone().strftime("%Y-%m-%d %H:%M")
             yield Input(value=due_value, placeholder="2026-04-20 14:30", id="due")
+            yield Static("", id="task-editor-error")
             with Horizontal(classes="button-row"):
                 yield Button("Cancel", variant="default", id="cancel")
                 yield Button("Save", variant="primary", id="save")
@@ -154,60 +177,39 @@ class TaskEditorScreen(ModalScreen[TaskEditorResult | None]):
         if event.button.id == "cancel":
             self.dismiss(None)
             return
+        self._submit()
+
+    def _submit(self) -> None:
+        title = self.query_one("#title", Input).value.strip()
         estimate_raw = self.query_one("#estimate", Input).value.strip()
-        estimate = int(estimate_raw) if estimate_raw.isdigit() else None
+        due = self.query_one("#due", Input).value.strip()
+        error = self.query_one("#task-editor-error", Static)
+        if not title:
+            error.update("Task title is required.")
+            self.query_one("#title", Input).focus()
+            return
+        if estimate_raw and (not estimate_raw.isdigit() or int(estimate_raw) < 1):
+            error.update("Estimate must be a whole number greater than zero.")
+            self.query_one("#estimate", Input).focus()
+            return
+        if due:
+            try:
+                parse_user_datetime(due)
+            except ValueError:
+                error.update("Use YYYY-MM-DD HH:MM or DD.MM.YYYY HH:MM for the due date.")
+                self.query_one("#due", Input).focus()
+                return
+        estimate = int(estimate_raw) if estimate_raw else None
         self.dismiss(
             TaskEditorResult(
-                title=self.query_one("#title", Input).value.strip(),
+                title=title,
                 description=self.query_one("#description", Input).value.strip(),
                 priority=str(self.query_one("#priority", Select).value),
                 tags=self.query_one("#tags", Input).value.strip(),
                 estimate=estimate,
-                due=self.query_one("#due", Input).value.strip() or None,
+                due=due or None,
             )
         )
-
-
-class SearchScreen(ModalScreen[str | None]):
-    DEFAULT_CSS = """
-    SearchScreen {
-        align: center middle;
-    }
-
-    #search-dialog {
-        width: 70;
-        background: #0f1522;
-        border: solid #6b7db8;
-        padding: 1 2;
-    }
-    """
-
-    def __init__(self, current: str) -> None:
-        super().__init__()
-        self.current = current
-
-    def compose(self) -> ComposeResult:
-        with Vertical(id="search-dialog"):
-            yield Static("Search Tasks", classes="dialog-title")
-            yield Input(value=self.current, placeholder="Search title, note, tag", id="search-input")
-            with Horizontal(classes="button-row"):
-                yield Button("Clear", id="clear")
-                yield Button("Cancel", id="cancel")
-                yield Button("Apply", variant="primary", id="apply")
-
-    def on_mount(self) -> None:
-        self.query_one("#search-input", Input).focus()
-
-    def on_input_submitted(self, _: Input.Submitted) -> None:
-        self.dismiss(self.query_one("#search-input", Input).value.strip())
-
-    def on_button_pressed(self, event: Button.Pressed) -> None:
-        if event.button.id == "clear":
-            self.dismiss("")
-        elif event.button.id == "cancel":
-            self.dismiss(None)
-        else:
-            self.dismiss(self.query_one("#search-input", Input).value.strip())
 
 
 class FilterScreen(ModalScreen[TaskFilters | None]):
@@ -218,8 +220,10 @@ class FilterScreen(ModalScreen[TaskFilters | None]):
 
     #filter-dialog {
         width: 78;
-        background: #0f1522;
-        border: solid #6aa2a1;
+        max-width: 95%;
+        background: $panel;
+        color: $foreground;
+        border: solid $secondary;
         padding: 1 2;
     }
     """
@@ -291,20 +295,22 @@ class ConfirmScreen(ModalScreen[bool]):
 
     #confirm-dialog {
         width: 64;
-        background: #0f1522;
-        border: solid #b76b7c;
+        max-width: 95%;
+        background: $panel;
+        color: $foreground;
+        border: solid $error;
         padding: 1 2;
     }
     """
 
     def __init__(self, title: str, body: str) -> None:
         super().__init__()
-        self.title = title
+        self.dialog_title = title
         self.body = body
 
     def compose(self) -> ComposeResult:
         with Vertical(id="confirm-dialog"):
-            yield Static(self.title, classes="dialog-title")
+            yield Static(self.dialog_title, classes="dialog-title")
             yield Static(self.body)
             with Horizontal(classes="button-row"):
                 yield Button("Cancel", id="cancel")
@@ -322,8 +328,10 @@ class BreakPromptScreen(ModalScreen[bool]):
 
     #break-prompt-dialog {
         width: 74;
-        background: #0f1522;
-        border: solid #d3a94b;
+        max-width: 95%;
+        background: $panel;
+        color: $foreground;
+        border: tall $primary;
         padding: 1 2;
     }
 
@@ -343,8 +351,8 @@ class BreakPromptScreen(ModalScreen[bool]):
         with Vertical(id="break-prompt-dialog"):
             yield Static("Pomodoro Complete", classes="dialog-title")
             yield Static(
-                f"{self.minutes} dakikalik mola baslatilsin mi?{task_suffix}\n"
-                "Mola baslarsa timer hemen calismaya baslar."
+                f"Start a {self.minutes}-minute break?{task_suffix}\n"
+                "The timer begins immediately."
             )
             with Horizontal(classes="button-row"):
                 yield Button("Skip", id="skip")
@@ -362,8 +370,10 @@ class SettingEditScreen(ModalScreen[str | None]):
 
     #setting-dialog {
         width: 72;
-        background: #0f1522;
-        border: solid #7d8be0;
+        max-width: 95%;
+        background: $panel;
+        color: $foreground;
+        border: solid $secondary;
         padding: 1 2;
     }
     """
@@ -399,9 +409,11 @@ class BlockedSitesScreen(ModalScreen[bool]):
 
     #blocked-sites-dialog {
         width: 92;
+        max-width: 95%;
         height: 30;
-        background: #0f1522;
-        border: solid #6aa2a1;
+        background: $panel;
+        color: $foreground;
+        border: solid $secondary;
         padding: 1 2;
     }
 

@@ -19,7 +19,7 @@ from ..focus_hosts_helper import DEFAULT_HOSTS_PATH, HostsStatus, inspect_hosts_
 from ..models import FocusStateSnapshot
 from ..notifications import notify
 from ..settings import SettingsService
-from ..utils import json_dumps, parse_dt, poke_waybar, remaining_seconds, to_iso, utc_now
+from ..utils import json_dumps, parse_dt, poke_status_bar, remaining_seconds, to_iso, utc_now
 
 
 class FocusService:
@@ -59,7 +59,7 @@ class FocusService:
         )
         self._reapply_active_sites()
         notify("Blocked site list updated", value, enabled=self.settings.get("notifications_enabled"))
-        poke_waybar()
+        poke_status_bar()
 
     def update_site(
         self,
@@ -101,7 +101,7 @@ class FocusService:
             f"{current_domain} -> {next_domain}",
             enabled=self.settings.get("notifications_enabled"),
         )
-        poke_waybar()
+        poke_status_bar()
         return next_domain
 
     def remove_site(self, domain: str) -> None:
@@ -109,7 +109,7 @@ class FocusService:
         self.db.execute("DELETE FROM blocked_sites WHERE domain = ?", (value,))
         self._reapply_active_sites()
         notify("Blocked site removed", value, enabled=self.settings.get("notifications_enabled"))
-        poke_waybar()
+        poke_status_bar()
 
     def toggle_site(self, domain: str, enabled: bool) -> None:
         value = self._normalize_domain(domain)
@@ -120,7 +120,7 @@ class FocusService:
             f"{value}: {'enabled' if enabled else 'disabled'}",
             enabled=self.settings.get("notifications_enabled"),
         )
-        poke_waybar()
+        poke_status_bar()
 
     def recover(self) -> FocusStateSnapshot:
         system = inspect_hosts_file(DEFAULT_HOSTS_PATH)
@@ -134,7 +134,7 @@ class FocusService:
 
         if raw and not system.active:
             self._close_active_session("System blocks were removed externally")
-            poke_waybar()
+            poke_status_bar()
             return FocusStateSnapshot(active=False)
 
         if not raw and system.active:
@@ -286,7 +286,7 @@ class FocusService:
 
         self._persist_snapshot(snapshot)
         self._update_active_session_record(snapshot)
-        poke_waybar()
+        poke_status_bar()
 
     def _close_active_session(self, note: str = "") -> None:
         raw = self._load_state()
@@ -385,7 +385,7 @@ class FocusService:
             f"{len(snapshot.blocked_sites)} site(s) blocked",
             enabled=self.settings.get("notifications_enabled"),
         )
-        poke_waybar()
+        poke_status_bar()
         return snapshot
 
     def stop(
@@ -399,7 +399,7 @@ class FocusService:
         if not snapshot.active:
             try:
                 self._run_helper("clear", interactive=interactive)
-                poke_waybar()
+                poke_status_bar()
             except FocusModeError:
                 pass
             return FocusStateSnapshot(active=False)
@@ -413,7 +413,7 @@ class FocusService:
         self._run_helper("clear", interactive=interactive)
         self._close_active_session(reason)
         notify("Focus mode off", reason, enabled=self.settings.get("notifications_enabled"))
-        poke_waybar()
+        poke_status_bar()
         return FocusStateSnapshot(active=False)
 
     def toggle(self) -> FocusStateSnapshot:

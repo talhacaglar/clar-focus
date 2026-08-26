@@ -66,6 +66,8 @@ class TaskService:
                     to_iso(now),
                 ),
             )
+            if cursor.lastrowid is None:
+                raise RuntimeError("Task insert did not return an id")
             task_id = int(cursor.lastrowid)
         return self.get_task(task_id)
 
@@ -143,18 +145,32 @@ class TaskService:
         estimated_minutes: int | None = None,
         due_at: str | None = None,
         status: str | None = None,
+        clear_estimated_minutes: bool = False,
+        clear_due_at: bool = False,
     ) -> Task:
         task = self.get_task(task_id)
+        estimate = (
+            None
+            if clear_estimated_minutes
+            else estimated_minutes
+            if estimated_minutes is not None
+            else task.estimated_minutes
+        )
+        due = (
+            None
+            if clear_due_at
+            else parse_user_datetime(due_at)
+            if due_at is not None
+            else task.due_at
+        )
         fields = {
             "title": title.strip() if title is not None else task.title,
             "description": description.strip() if description is not None else task.description,
             "priority": TaskPriority(priority or task.priority).value,
             "status": TaskStatus(status or task.status).value,
             "tags_json": json.dumps(coerce_tags(tags) if tags is not None else list(task.tags)),
-            "estimated_minutes": estimated_minutes
-            if estimated_minutes is not None
-            else task.estimated_minutes,
-            "due_at": to_iso(parse_user_datetime(due_at)) if due_at is not None else to_iso(task.due_at),
+            "estimated_minutes": estimate,
+            "due_at": to_iso(due),
             "updated_at": to_iso(utc_now()),
         }
         completed_at = task.completed_at

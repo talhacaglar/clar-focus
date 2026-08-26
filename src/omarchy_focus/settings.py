@@ -15,7 +15,7 @@ DEFAULT_SETTINGS: dict[str, Any] = {
     "default_view": "dashboard",
     "theme_variant": "midnight-gold",
     "notifications_enabled": True,
-    "waybar_output_mode": "json",
+    "bar_output_mode": "json",
     "strict_mode_default": False,
     "focus_auto_release": True,
     "focus_on_pomodoro_start": False,
@@ -25,6 +25,16 @@ DEFAULT_SETTINGS: dict[str, Any] = {
 class SettingsService:
     def __init__(self, db: Database) -> None:
         self.db = db
+        legacy_bar_mode = self.db.fetchone(
+            "SELECT value_json FROM settings WHERE key = 'waybar_output_mode'"
+        )
+        current_bar_mode = self.db.fetchone(
+            "SELECT value_json FROM settings WHERE key = 'bar_output_mode'"
+        )
+        if legacy_bar_mode and not current_bar_mode:
+            self.db.set_setting("bar_output_mode", legacy_bar_mode["value_json"])
+        if legacy_bar_mode:
+            self.db.execute("DELETE FROM settings WHERE key = 'waybar_output_mode'")
         self.db.seed_defaults(DEFAULT_SETTINGS)
 
     def get(self, key: str, default: Any = None) -> Any:

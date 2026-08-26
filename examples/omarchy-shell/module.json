@@ -1,0 +1,10 @@
+{
+  "id": "clarfocus",
+  "type": "command",
+  "exec": "~/.local/bin/clar-focus-bar status",
+  "interval": 2,
+  "tooltip": "Clar Focus",
+  "onClick": "~/.local/bin/clar-focus-bar open",
+  "onRightClick": "~/.local/bin/clar-focus-bar toggle-pomodoro",
+  "onMiddleClick": "~/.local/bin/clar-focus-bar toggle-focus"
+}

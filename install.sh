@@ -6,11 +6,11 @@ PROJECT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 BIN_DIR="$HOME/.local/bin"
 APP_DIR="$HOME/.local/share/clar-focus"
 VENV_DIR="$APP_DIR/venv"
-WAYBAR_CONFIG="$HOME/.config/waybar/config.jsonc"
-WAYBAR_STYLE="$HOME/.config/waybar/style.css"
-WAYBAR_WRAPPER="$BIN_DIR/clar-focus-waybar"
+OMARCHY_SHELL_CONFIG="$HOME/.config/omarchy/shell.json"
+BAR_WRAPPER="$BIN_DIR/clar-focus-bar"
+BAR_MODULE="$PROJECT_DIR/examples/omarchy-shell/module.json"
 
-echo "[clar-focus] Bootstrapping premium productivity suite..."
+echo "[clar-focus] Installing productivity suite..."
 mkdir -p "$BIN_DIR" "$APP_DIR"
 
 if [[ ! -d "$VENV_DIR" ]]; then
@@ -24,53 +24,42 @@ for cmd in clar-focus clar-focus-hosts-helper omarchy-focus focus focus-indicato
   ln -sf "$VENV_DIR/bin/$cmd" "$BIN_DIR/$cmd"
 done
 
-install -m 755 "$PROJECT_DIR/examples/waybar/clar-focus-waybar.sh" "$WAYBAR_WRAPPER"
-ln -sf "$WAYBAR_WRAPPER" "$BIN_DIR/omarchy-focus-waybar"
+install -m 755 "$PROJECT_DIR/examples/omarchy-shell/clar-focus-bar.sh" "$BAR_WRAPPER"
 
-if [[ -f "$WAYBAR_CONFIG" ]] && ! grep -q '"custom/clar-focus"' "$WAYBAR_CONFIG"; then
-  python - "$WAYBAR_CONFIG" <<'PY'
-from pathlib import Path
-import sys
+# Keep old command names working without making Waybar the primary integration.
+ln -sf "$BAR_WRAPPER" "$BIN_DIR/clar-focus-waybar"
+ln -sf "$BAR_WRAPPER" "$BIN_DIR/omarchy-focus-waybar"
 
-config = Path(sys.argv[1])
-text = config.read_text(encoding="utf-8")
-module = '''
-  "custom/clar-focus": {
-    "exec": "~/.local/bin/clar-focus-waybar status",
-    "return-type": "json",
-    "interval": 2,
-    "signal": 12,
-    "on-click": "~/.local/bin/clar-focus-waybar open",
-    "on-click-right": "~/.local/bin/clar-focus-waybar toggle-pomodoro",
-    "on-click-middle": "~/.local/bin/clar-focus-waybar toggle-focus",
-    "tooltip": true
-  },
-'''
-if '"tray": {' in text:
-    text = text.replace('  "tray": {', module + '  "tray": {', 1)
-if '"modules-right": [' in text and '"custom/clar-focus"' not in text:
-    text = text.replace('"modules-right": [', '"modules-right": [\n    "custom/clar-focus",', 1)
-config.write_text(text, encoding="utf-8")
-PY
-  echo "  -> Added Waybar module snippet"
-fi
-
-if [[ -f "$WAYBAR_STYLE" ]] && ! grep -q '#custom-clar-focus' "$WAYBAR_STYLE"; then
-  {
-    printf '\n'
-    cat "$PROJECT_DIR/examples/waybar/style.css"
-  } >> "$WAYBAR_STYLE"
-  echo "  -> Added Waybar styles"
+bar_result="skipped"
+if [[ -f "$OMARCHY_SHELL_CONFIG" ]]; then
+  backup_path="$OMARCHY_SHELL_CONFIG.bak.clar-focus-$(date +%Y%m%d-%H%M%S)"
+  cp -- "$OMARCHY_SHELL_CONFIG" "$backup_path"
+  bar_result="$("$VENV_DIR/bin/python" "$PROJECT_DIR/scripts/install_omarchy_bar.py" \
+    "$OMARCHY_SHELL_CONFIG" "$BAR_MODULE")"
+  if [[ "$bar_result" == "unchanged" ]]; then
+    rm -- "$backup_path"
+  else
+    echo "  -> Omarchy bar widget updated"
+    echo "  -> Backup: $backup_path"
+  fi
+else
+  echo "  -> Omarchy Shell config not found; bar widget skipped"
 fi
 
 echo ""
 echo "[clar-focus] Installed."
 echo "  Command: clar-focus"
-echo "  Compatibility alias: omarchy-focus"
-echo "  Legacy focus aliases: focus / focus-indicator"
-echo "  Waybar helper: $WAYBAR_WRAPPER"
+echo "  Omarchy bar helper: $BAR_WRAPPER"
+echo "  Bar controls: left=open, right=timer, middle=focus guard"
+echo "  Compatibility aliases: omarchy-focus / focus / focus-indicator"
 echo ""
-echo "Optional:"
+echo "Optional recovery service:"
 echo "  systemctl --user enable --now $PROJECT_DIR/examples/systemd/clar-focus-recover.service"
-echo ""
-echo "Restart Waybar to load the module."
+
+if [[ "$bar_result" == "skipped" ]]; then
+  echo ""
+  echo "Add examples/omarchy-shell/module.json to your Omarchy bar layout when available."
+else
+  echo ""
+  echo "Omarchy Shell reloads the bar configuration automatically."
+fi

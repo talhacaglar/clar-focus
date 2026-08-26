@@ -18,7 +18,7 @@ from ..utils import (
     json_dumps,
     parse_dt,
     play_alert_sound,
-    poke_waybar,
+    poke_status_bar,
     remaining_seconds,
     to_iso,
     utc_now,
@@ -137,7 +137,7 @@ class PomodoroService:
             self._record_session(snapshot, completed=False, interrupted=True, note="system rebooted")
         self.db.delete_state(self.STATE_KEY)
         self.clear_pending_break()
-        poke_waybar()
+        poke_status_bar()
         return PomodoroStateSnapshot()
 
     def status(self) -> PomodoroStateSnapshot:
@@ -198,7 +198,7 @@ class PomodoroService:
             task_title or f"{duration_minutes} minute focus session",
             enabled=self.settings.get("notifications_enabled"),
         )
-        poke_waybar()
+        poke_status_bar()
         return snapshot
 
     def start_break(self, *, minutes: int | None = None) -> PomodoroStateSnapshot:
@@ -234,7 +234,7 @@ class PomodoroService:
             f"{duration_minutes} minute break",
             enabled=self.settings.get("notifications_enabled"),
         )
-        poke_waybar()
+        poke_status_bar()
         return snapshot
 
     def pause(self) -> PomodoroStateSnapshot:
@@ -246,7 +246,7 @@ class PomodoroService:
         snapshot.paused_at = utc_now()
         snapshot.ends_at = None
         self._save_raw(self._snapshot_to_raw(snapshot))
-        poke_waybar()
+        poke_status_bar()
         return snapshot
 
     def resume(self) -> PomodoroStateSnapshot:
@@ -260,7 +260,7 @@ class PomodoroService:
         snapshot.ends_at = now + timedelta(seconds=snapshot.remaining_seconds)
         snapshot.boot_id = current_boot_id()
         self._save_raw(self._snapshot_to_raw(snapshot))
-        poke_waybar()
+        poke_status_bar()
         return snapshot
 
     def stop(self, *, reason: str = "stopped") -> PomodoroStateSnapshot:
@@ -273,7 +273,7 @@ class PomodoroService:
         if snapshot.auto_focus and self.focus.status(check_expiry=False).active:
             with contextlib.suppress(Exception):
                 self.focus.stop(force=True, reason="Focus session ended with pomodoro")
-        poke_waybar()
+        poke_status_bar()
         return PomodoroStateSnapshot()
 
     def toggle(self) -> PomodoroStateSnapshot:
@@ -325,7 +325,7 @@ class PomodoroService:
             )
             play_alert_sound()
             focus_app_tui()
-            poke_waybar()
+            poke_status_bar()
             return PomodoroStateSnapshot()
 
         self._record_session(snapshot, completed=True, interrupted=False, note="break complete")
@@ -335,7 +335,7 @@ class PomodoroService:
             "Ready for the next focus session",
             enabled=self.settings.get("notifications_enabled"),
         )
-        poke_waybar()
+        poke_status_bar()
         return PomodoroStateSnapshot()
 
     def _record_session(

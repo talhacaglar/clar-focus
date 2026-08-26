@@ -1,6 +1,6 @@
 # Clar Focus
 
-Premium terminal-first productivity suite for **Arch Linux + Wayland + Hyprland + Waybar**.
+Terminal-first productivity suite for **Arch Linux + Hyprland + Omarchy Shell**.
 
 It combines:
 
@@ -8,7 +8,7 @@ It combines:
 - a real **SQLite-backed task manager**
 - a configurable **pomodoro engine**
 - a real **hosts-file based focus blocker**
-- a compact **Waybar module**
+- a native **Omarchy bar command widget**
 
 The project is designed to feel like a polished productivity tool, not a shell-script toy.
 
@@ -20,8 +20,8 @@ The project is designed to feel like a polished productivity tool, not a shell-s
    Dedicated Python services handle tasks, pomodoro logic, stats, notifications, and focus-mode orchestration.
 3. **Focus enforcement**
    A separate helper safely edits `/etc/hosts` with explicit markers for recovery and cleanup.
-4. **CLI + Waybar**
-   CLI commands drive automation, while Waybar consumes a compact JSON status command.
+4. **CLI + Omarchy bar**
+   CLI commands drive automation, while Omarchy Shell consumes a compact JSON status command.
 5. **Premium TUI**
    Textual renders a multi-view dashboard with keyboard-first navigation and modal editors.
 
@@ -32,10 +32,10 @@ clar-focus/
 ├── examples/
 │   ├── systemd/
 │   │   └── clar-focus-recover.service
-│   └── waybar/
-│       ├── module.jsonc
-│       ├── clar-focus-waybar.sh
-│       └── style.css
+│   ├── omarchy-shell/
+│   │   ├── module.json
+│   │   └── clar-focus-bar.sh
+│   └── waybar/                  # legacy compatibility examples
 ├── src/
 │   └── omarchy_focus/
 │       ├── __init__.py
@@ -51,7 +51,8 @@ clar-focus/
 │       ├── paths.py
 │       ├── settings.py
 │       ├── utils.py
-│       ├── waybar.py
+│       ├── bar.py
+│       ├── waybar.py            # legacy Python aliases
 │       ├── services/
 │       │   ├── __init__.py
 │       │   ├── focus.py
@@ -101,13 +102,13 @@ clar-focus/
 - recovery on next launch if the app crashed but markers remain
 - blocked site list stored in SQLite and editable from CLI/TUI
 
-### Waybar Integration
+### Omarchy Bar Integration
 
-- JSON status output for `custom/*` modules
+- native Omarchy Shell `command` widget
 - left click opens TUI
 - right click toggles pomodoro
 - middle click toggles focus mode
-- signal-based refresh via `RTMIN+12`
+- automatic two-second status refresh
 
 ## Install
 
@@ -123,8 +124,8 @@ The installer:
 - creates a local venv under `~/.local/share/clar-focus/venv`
 - installs the package into that venv
 - symlinks commands into `~/.local/bin`
-- installs the Waybar wrapper script
-- optionally injects a Waybar module and style snippet if your config exists
+- installs the Omarchy bar helper
+- updates the native Omarchy Shell bar widget if your config exists
 
 ### Manual install
 
@@ -144,9 +145,9 @@ Runtime:
 - `notify-send` for desktop notifications
 - `sudo` for focus-mode `/etc/hosts` changes
 
-Optional integration:
+Desktop integration:
 
-- Waybar
+- Omarchy Shell bar
 - Hyprland / Omarchy terminal launch helpers
 
 ## CLI Usage
@@ -192,13 +193,13 @@ clar-focus focus remove-site instagram.com
 clar-focus focus recover
 ```
 
-### Status / Waybar
+### Status / Omarchy Bar
 
 ```bash
 clar-focus status
 clar-focus status --json
-clar-focus waybar
-clar-focus waybar --plain
+clar-focus bar
+clar-focus bar --plain
 clar-focus stats
 clar-focus settings show
 clar-focus settings set pomodoro_work_minutes 50
@@ -217,15 +218,17 @@ Views:
 
 Layout direction:
 
-- top status rail with premium cards
-- dashboard with agenda, task detail, pomodoro, focus, and analytics panels
-- tasks view with searchable task table and detail sidebar
+- compact live rail for timer, focus guard, and queue state
+- action-first `Now` view with the next task, one-click session controls, queue, and daily rhythm
+- tasks view with debounced live search, stable selection, empty-state guidance, and a detail sidebar
 - focus view with active session state and blocked-sites table
 - statistics view with mini sparkline/progress bars
-- settings view with editable settings table
+- settings view with human-readable labels, quick boolean toggles, and validated values
 - **light/dark theme** — signature "midnight-gold" (dark) and "daylight-gold"
   (light) themes, toggled with `F2`. The choice is persisted in the settings
   table (`theme_variant`) and restored on the next launch.
+- responsive compact mode for narrower terminal windows
+- split refresh loop: countdowns update every second without rebuilding tables or stealing input focus
 
 ## Keyboard Shortcuts
 
@@ -234,7 +237,7 @@ Layout direction:
 - `e`: edit selected task or selected setting
 - `d`: delete selected task
 - `x`: complete selected task
-- `/`: search
+- `/`: open the task view and focus live search
 - `f`: filter
 - `s`: start/stop pomodoro
 - `p`: pause/resume
@@ -247,41 +250,40 @@ Layout direction:
 - `F2`: toggle light/dark theme
 - `?`: help
 
-## Waybar Example
+## Omarchy Bar
 
-Module snippet:
+`./install.sh` updates `~/.config/omarchy/shell.json` without replacing the rest
+of your layout. It keeps the widget near `omarchy.indicators`, updates an
+existing `clarfocus` entry in place, and stores a timestamped backup when it
+changes the file.
 
-```jsonc
+Native command widget:
+
+```json
 {
-  "custom/clar-focus": {
-    "exec": "~/.local/bin/clar-focus-waybar status",
-    "return-type": "json",
-    "interval": 2,
-    "signal": 12,
-    "on-click": "~/.local/bin/clar-focus-waybar open",
-    "on-click-right": "~/.local/bin/clar-focus-waybar toggle-pomodoro",
-    "on-click-middle": "~/.local/bin/clar-focus-waybar toggle-focus",
-    "tooltip": true
-  }
+  "id": "clarfocus",
+  "type": "command",
+  "exec": "~/.local/bin/clar-focus-bar status",
+  "interval": 2,
+  "onClick": "~/.local/bin/clar-focus-bar open",
+  "onRightClick": "~/.local/bin/clar-focus-bar toggle-pomodoro",
+  "onMiddleClick": "~/.local/bin/clar-focus-bar toggle-focus"
 }
 ```
 
-Starter style:
+Controls:
 
-```css
-#custom-clar-focus {
-  min-width: 164px;
-  padding: 1px 12px;
-  margin: 2px 3px;
-  border-radius: 13px;
-}
-```
+- left click: open or raise the Clar Focus TUI
+- right click: start/stop the pomodoro
+- middle click: enable/disable Focus Guard
 
 Reference files:
 
-- `examples/waybar/module.jsonc`
-- `examples/waybar/style.css`
-- `examples/waybar/clar-focus-waybar.sh`
+- `examples/omarchy-shell/module.json`
+- `examples/omarchy-shell/clar-focus-bar.sh`
+
+The old `clar-focus waybar` command and helper names remain aliases for existing
+setups, but the installer no longer edits Waybar configuration or CSS.
 
 ## Focus Mode Technical Notes
 
@@ -295,7 +297,7 @@ Why:
 - easy to audit
 - reversible
 - does not require a long-running daemon
-- integrates cleanly with CLI + Waybar workflows
+- integrates cleanly with CLI + Omarchy bar workflows
 
 ### Safety model
 
